@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>BCDIAPI Wrapper Test</title>
+        <style>
+          body {
+              font-family: sans-serif;
+              color: #333;
+              padding: 4em;
+              padding-top: 0;
+          }
+          fieldset {
+              border-color: #559BB9;
+              border-radius: 1em;
+              font-size: small;
+          }
+          div {
+              margin-bottom: 1em;
+          }
+          legend {
+              color: #559BB9;
+              text-align: center;
+              font-weight: bold;
+              font-size: 1.5em;
+          }
+          textarea.output {
+              width: 100%;
+              height: 8em;
+          }
+          pre {
+              background-color: #E9E9E9;
+              padding: .5em;
+          }
+          input {
+              width: 60%;
+              height: 2em;
+          }
+          select {
+              height: 2em;
+          }
+          button {
+              padding: 1em;
+          }
+          iframe {
+              height: 40em;
+              width: 100%;
+          }
+        </style>
+    </head>
+    <body>
+    <h1>BCDIAPI Wrapper Test</h1>
+
+    <div class="form-wrapper">
+        <form action="diapi-wrapper-test.php" method="post" enctype="application/x-www-form-urlencoded" target="responseFrame" id="inputForm">
+            <fieldset>
+                <legend>Input</legend>
+                <p>Account id: <input type="text" name="account_id" id="account_id"></p>
+                <p>Client id: <input type="text" name="client_id" id="client_id"></p>
+                <p>Client secret: <input type="text" name="client_secret" id="client_secret"></p>
+                <p>
+                    Request type: <select id="typeSelect" name="typeSelect">
+                        <option value="pull_options" selected="selected">Add video (pull-based)</option>
+                        <option value="push_options">Add video (upload source files)</option>
+                        <option value="pull_replace_options">Replace video (pull-based)</option>
+                        <option value="push_replace_options">Replace video (upload source files)</option>
+                        <option value="retranscode_options">Retranscode video</option>
+                    </select>
+                </p>
+                <p>Video id: <input name="video_id" id="video_id" type="text"><br>(Required for replace or retranscode request)</p>
+                <p>
+                    <input type="submit" id="submit" style="padding:.5em;width:6em;">
+                </p>
+            </fieldset>
+        </form>
+    </div>
+    <div>
+        <fieldset>
+            <legend>Data submitted</legend>
+            <p>
+                Video metadata:
+            </p>
+            <pre class="input" id="video_metadata"></pre>
+            <p>
+                Ingest request options:
+            </p>
+                <pre class="input" id="ingest_data"></pre>
+            <p>
+                File data:
+            </p>
+                <pre class="input" id="file_data"></pre>
+            <p>
+                Text tracks data:
+            </p>
+                <pre class="input" id="text_tracks_data"></pre>
+        </fieldset>
+    </div>
+    <div>
+        <fieldset style="min-height:40em;">
+            <legend>Output</legend>
+            <iframe id="responseFrame" name="responseFrame"></iframe>
+        </fieldset>
+    </div>
+        <script>
+        var BCLS = (function (window, document) {
+            var account_id = document.getElementById('account_id'),
+                client_id = document.getElementById('client_id'),
+                client_secret = document.getElementById('client_secret'),
+                typeSelect = document.getElementById('typeSelect'),
+                submit = document.getElementById('submit'),
+                video_metadata = document.getElementById('video_metadata'),
+                video_id = document.getElementById('video_id'),
+                ingest_data = document.getElementById('ingest_data'),
+                file_data = document.getElementById('file_data'),
+                text_tracks_data = document.getElementById('text_tracks_data'),
+                responseFrame = document.getElementById('responseFrame'),
+                inputForm = document.getElementById('inputForm'),
+                inputData = {};
+
+                inputData.pull_options = {};
+                inputData.push_options = {};
+                inputData.pull_replace_options = {};
+                inputData.push_replace_options = {};
+                inputData.pull_options = {};
+                inputData.retranscode_options = {};
+
+                inputData.pull_options.video_metadata = '{"name":"Great Blue Heron - DI Wrapper test","description": "An original nature video","tags": ["nature","bird"]}';
+                inputData.pull_options.ingest_data = '{"profile": "videocloud-default-v1","capture-images": true,"text_tracks": [{"url": "http://solutions.brightcove.com/bcls/assets/vtt/sample.vtt","srclang": "en","kind": "captions","label": "EN","default": true}],"master": {"url": "http://solutions.brightcove.com/bcls/assets/videos/Great_Blue_Heron.mp4"},"callbacks": ["http://solutions.brightcove.com/bcls/di-api/di-callbacks.php"]}';
+                inputData.pull_options.file_data = null;
+                inputData.pull_options.text_tracks_data = null;
+                inputData.pull_replace_options.video_metadata = '{"name":"Great Blue Heron - DI Wrapper test","description": "An original nature video","tags": ["nature","bird"]}';
+                inputData.pull_replace_options.ingest_data = '{"profile": "videocloud-default-v1","capture-images": true,"text_tracks": [{"url": "http://solutions.brightcove.com/bcls/assets/vtt/sample.vtt","srclang": "en","kind": "captions","label": "EN","default": true}],"master": {"url": "http://solutions.brightcove.com/bcls/assets/videos/Great_Blue_Heron.mp4"},"callbacks": ["http://solutions.brightcove.com/bcls/di-api/di-callbacks.php"]}';
+                inputData.pull_replace_options.file_data = null;
+                inputData.pull_replace_options.text_tracks_data = null;
+                inputData.push_options.video_metadata = '{"name":"Great Blue Heron - DI Wrapper test","description": "An original nature video","tags": ["nature","bird"]}';
+                inputData.push_options.ingest_data = '{"profile": "videocloud-default-v1","capture-images": true,"callbacks": ["http://solutions.brightcove.com/bcls/di-api/di-callbacks.php"]}';
+                inputData.push_options.file_data = '{"video": "assets/Great-Blue-Heron.mp4"}';
+                inputData.push_options.text_tracks_data = '[{"path": "assets/sample.vtt", "srclang": "en","kind": "captions","label": "EN","default": true}]';
+                inputData.push_replace_options.video_metadata = '{"name":"Great Blue Heron - DI Wrapper test","description": "An original nature video","tags": ["nature","bird"]}';
+                inputData.push_replace_options.ingest_data = '{"profile": "videocloud-default-v1","capture-images": true,"callbacks": ["http://solutions.brightcove.com/bcls/di-api/di-callbacks.php"]}';
+                inputData.push_replace_options.file_data = '{"video": "assets/Great-Blue-Heron.mp4"}';
+                inputData.push_replace_options.text_tracks_data = '[{"path": "assets/sample.vtt", "srclang": "en","kind": "captions","label": "EN","default": true}]';
+                inputData.retranscode_options.ingest_data = '{"profile": "screencast-1280","capture-images": false,"master": { "use_archived_master": true },"callbacks": ["http://solutions.brightcove.com/bcls/di-api/di-callbacks.php"]}';
+                inputData.retranscode_options.video_metadata = null;
+                inputData.retranscode_options.file_data = null;
+                inputData.retranscode_options.text_tracks_data = null;
+
+                typeSelect.addEventListener('change', function() {
+                    var val = getSelectValue(typeSelect);
+                    displayInputData(val.value);
+                });
+
+                // display input data for pull request initially
+                displayInputData('pull_options');
+
+                /**
+                 * display input data based on job type selection
+                 * @oaram {String} jobType the job type requested
+                 */
+                function displayInputData(jobType) {
+                    video_metadata.textContent = formatJSON(inputData[jobType].video_metadata);
+                    ingest_data.textContent = formatJSON(inputData[jobType].ingest_data);
+                    file_data.textContent = formatJSON(inputData[jobType].file_data);
+                    text_tracks_data.textContent = formatJSON(inputData[jobType].text_tracks_data);
+                }
+
+                /**
+                 * tests for all the ways a variable might be undefined or not have a value
+                 * @param {*} x the variable to test
+                 * @return {Boolean} true if variable is defined and has a value
+                 */
+                function isDefined(x) {
+                    if ( x === '' || x === null || x === undefined) {
+                        return false;
+                    }
+                    return true;
+                }
+
+                /**
+                 * get selected value for single select element
+                 * @param {htmlElement} e the select element
+                 * @return {Object} object containing the `value`, text, and selected `index`
+                 */
+                function getSelectValue(e) {
+                    var selected = e.options[e.selectedIndex],
+                        val = selected.value,
+                        txt = selected.textContent,
+                        idx = e.selectedIndex;
+                    return {
+                        value: val,
+                        text: txt,
+                        index: idx
+                    };
+                }
+
+                /**
+                 * pretty print JSON
+                 * @param {json} the JSON string to prettify
+                 * @return the prettified JSON string
+                 */
+                function formatJSON(json) {
+                    var tmp = JSON.parse(json);
+                    return JSON.stringify(tmp, null, '  ');
+                }
+
+            })(window, document);
+        </script>
+    </body>
+</html>
